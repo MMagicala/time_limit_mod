@@ -3,7 +3,7 @@
   "name": "Time Limit Mod",
   "author_list": ["MMagicala"],
   "description": "Limit the amount of time to play each turn!",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "sts_version": "07-30-2020",
   "mts_version": "3.16.0",
   "dependencies": ["basemod"]

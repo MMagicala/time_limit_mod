@@ -11,6 +11,7 @@ import com.evacipated.cardcrawl.modthespire.lib.SpirePatch;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePostfixPatch;
 import com.megacrit.cardcrawl.actions.GameActionManager;
 import com.megacrit.cardcrawl.core.OverlayMenu;
+import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.helpers.FontHelper;
 import com.megacrit.cardcrawl.helpers.Hitbox;
@@ -28,6 +29,10 @@ public class TimeLimitMod implements PostInitializeSubscriber {
     private static final String TIME_LEFT_KEY = "timeLimit";
     private static float timeLeft;
     private static long lastRecordedTime;
+
+    private static final int UI_PADDING = 100;
+    private static final int WIDGET_X = 350;
+    private static final int WIDGET_Y = 700;
 
     public TimeLimitMod() {
         System.out.println("Time Limit Mod initialized");
@@ -49,6 +54,49 @@ public class TimeLimitMod implements PostInitializeSubscriber {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        // create mod settings panel
+        ModPanel settingsPanel = new ModPanel();
+
+        // create buttons and center label
+        ModLabel label = new ModLabel(config.getString(TIME_LEFT_KEY), WIDGET_X + 2 * UI_PADDING, 700, settingsPanel, (me) -> {
+            // Do nothing?
+        });
+        settingsPanel.addUIElement(label);
+
+        int[] deltas = {-10, -1, 1, 10};
+        for (int i = 0; i < 4; i++) {
+            // Determine index for lambda function
+            int index = i;
+            String btnText = Integer.toString(deltas[i]);
+            if (deltas[i] > 0) {
+                btnText = "+" + deltas[i];
+            }
+            ModLabeledButton deltaBtn = new ModLabeledButton(btnText, WIDGET_X+((i > 1 ? 1 : 0)+i)*UI_PADDING, WIDGET_Y, settingsPanel, (btn) -> {
+                config.setInt(TIME_LEFT_KEY, config.getInt(TIME_LEFT_KEY) + deltas[index]);
+                // Time left cannot be below 0
+                if (config.getInt(TIME_LEFT_KEY) < 0) {
+                    config.setInt(TIME_LEFT_KEY, 0);
+                }
+                // Update label
+                label.text = Integer.toString(config.getInt(TIME_LEFT_KEY));
+
+                try {
+                    config.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            settingsPanel.addUIElement(deltaBtn);
+        }
+
+        // Create label for this "widget" below
+        ModLabel widgetLabel = new ModLabel("Time left in seconds", WIDGET_X, WIDGET_Y-50, settingsPanel, (me) -> {
+        });
+        settingsPanel.addUIElement(widgetLabel);
+
+        // Load config
+        BaseMod.registerModBadge(ImageMaster.loadImage("badge.jpg"), "Best Route Mod", "MMagicala", "Find the best route in the map!", settingsPanel);
     }
 
     @SpirePatch(
@@ -73,9 +121,9 @@ public class TimeLimitMod implements PostInitializeSubscriber {
             if (__instance.endTurnButton.enabled) {
                 // Record time elapsed
                 long currentTime = System.nanoTime();
-                float secondsPassed = (float)(currentTime - lastRecordedTime) / TimeUnit.SECONDS.toNanos(1);
+                float secondsPassed = (float) (currentTime - lastRecordedTime) / TimeUnit.SECONDS.toNanos(1);
                 // Only decrement timer if we are viewing the room
-                if(!AbstractDungeon.isScreenUp) {
+                if (!AbstractDungeon.isScreenUp) {
                     timeLeft -= secondsPassed;
                 }
                 if (timeLeft <= 0) {
@@ -98,10 +146,10 @@ public class TimeLimitMod implements PostInitializeSubscriber {
             if (__instance.endTurnButton.enabled) {
                 Color color = timeLeft < 5f ? Color.RED : Color.WHITE;
                 // Use ReflectionHacks to get x and y of the "End Turn" button, and apply deltas
-                float x = (float)ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "current_x");
-                float y = (float)ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "current_y");
-                Hitbox hb = (Hitbox)ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "hb");
-                float yDelta = -hb.height/2 - 20;
+                float x = (float) ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "current_x");
+                float y = (float) ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "current_y");
+                Hitbox hb = (Hitbox) ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "hb");
+                float yDelta = -hb.height / 2 - 20;
                 y += yDelta;
                 FontHelper.renderFontCentered(sb, FontHelper.bannerFont, Long.toString(Math.round(Math.ceil(timeLeft))),
                         x, y, color, 2);
