@@ -2,21 +2,17 @@ package time_limit_mod;
 
 import basemod.*;
 import basemod.interfaces.PostInitializeSubscriber;
-import basemod.interfaces.PreUpdateSubscriber;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.evacipated.cardcrawl.modthespire.lib.SpireConfig;
 import com.evacipated.cardcrawl.modthespire.lib.SpireInitializer;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePatch;
 import com.evacipated.cardcrawl.modthespire.lib.SpirePostfixPatch;
-import com.megacrit.cardcrawl.actions.GameActionManager;
 import com.megacrit.cardcrawl.core.OverlayMenu;
-import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.helpers.FontHelper;
 import com.megacrit.cardcrawl.helpers.Hitbox;
 import com.megacrit.cardcrawl.helpers.ImageMaster;
-import com.megacrit.cardcrawl.rooms.AbstractRoom;
 import com.megacrit.cardcrawl.ui.buttons.EndTurnButton;
 
 import java.io.IOException;
@@ -72,7 +68,7 @@ public class TimeLimitMod implements PostInitializeSubscriber {
             if (deltas[i] > 0) {
                 btnText = "+" + deltas[i];
             }
-            ModLabeledButton deltaBtn = new ModLabeledButton(btnText, WIDGET_X+((i > 1 ? 1 : 0)+i)*UI_PADDING, WIDGET_Y, settingsPanel, (btn) -> {
+            ModLabeledButton deltaBtn = new ModLabeledButton(btnText, WIDGET_X + ((i > 1 ? 1 : 0) + i) * UI_PADDING, WIDGET_Y, settingsPanel, (btn) -> {
                 config.setInt(TIME_LEFT_KEY, config.getInt(TIME_LEFT_KEY) + deltas[index]);
                 // Time left cannot be below 0
                 if (config.getInt(TIME_LEFT_KEY) < 0) {
@@ -91,7 +87,7 @@ public class TimeLimitMod implements PostInitializeSubscriber {
         }
 
         // Create label for this "widget" below
-        ModLabel widgetLabel = new ModLabel("Time left in seconds", WIDGET_X, WIDGET_Y-50, settingsPanel, (me) -> {
+        ModLabel widgetLabel = new ModLabel("Time left in seconds", WIDGET_X, WIDGET_Y - 50, settingsPanel, (me) -> {
         });
         settingsPanel.addUIElement(widgetLabel);
 
@@ -118,19 +114,19 @@ public class TimeLimitMod implements PostInitializeSubscriber {
     public static class TimerUpdatePatch {
         @SpirePostfixPatch
         public static void Postfix(OverlayMenu __instance) {
-            if (__instance.endTurnButton.enabled) {
+            // Only decrement timer if we are viewing the room
+            if (__instance.endTurnButton.enabled && !AbstractDungeon.isScreenUp) {
                 // Record time elapsed
                 long currentTime = System.nanoTime();
                 float secondsPassed = (float) (currentTime - lastRecordedTime) / TimeUnit.SECONDS.toNanos(1);
-                // Only decrement timer if we are viewing the room
-                if (!AbstractDungeon.isScreenUp) {
-                    timeLeft -= secondsPassed;
-                }
+                timeLeft -= secondsPassed;
+
                 if (timeLeft <= 0) {
                     // Time up! End turn
                     AbstractDungeon.overlayMenu.endTurnButton.disable(true);
+                } else {
+                    lastRecordedTime = currentTime;
                 }
-                lastRecordedTime = currentTime;
             }
         }
     }
