@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 public class TimeLimitMod implements PostInitializeSubscriber {
     private static SpireConfig config;
     private static final String TIME_LEFT_KEY = "timeLimit";
+    private static final String ENABLED = "enabled";
+
     private static float timeLeft;
     private static long lastRecordedTime;
 
@@ -43,6 +45,7 @@ public class TimeLimitMod implements PostInitializeSubscriber {
         // Define default properties
         Properties properties = new Properties();
         properties.setProperty(TIME_LEFT_KEY, Integer.toString(30));
+        properties.setProperty(ENABLED, Boolean.toString(true));
 
         // Try to load a config file. If not found, use the default properties
         try {
@@ -91,6 +94,19 @@ public class TimeLimitMod implements PostInitializeSubscriber {
         });
         settingsPanel.addUIElement(widgetLabel);
 
+        // Create toggle button to disable feature
+        ModLabeledToggleButton enableBtn = new ModLabeledToggleButton("Enable mod", WIDGET_X, WIDGET_Y - 100,
+                Color.WHITE, FontHelper.charDescFont, config.getBool(ENABLED), settingsPanel, l -> {
+        }, button -> {
+            config.setBool(ENABLED, button.enabled);
+            try {
+                config.save();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        settingsPanel.addUIElement(enableBtn);
+
         // Load config
         BaseMod.registerModBadge(ImageMaster.loadImage("badge.jpg"), "Best Route Mod", "MMagicala", "Find the best route in the map!", settingsPanel);
     }
@@ -102,8 +118,10 @@ public class TimeLimitMod implements PostInitializeSubscriber {
     public static class StartTurnPatch {
         @SpirePostfixPatch
         public static void Postfix(EndTurnButton __instance) {
-            timeLeft = config.getInt(TIME_LEFT_KEY);
-            lastRecordedTime = System.nanoTime();
+            if (config.getBool(ENABLED)) {
+                timeLeft = config.getInt(TIME_LEFT_KEY);
+                lastRecordedTime = System.nanoTime();
+            }
         }
     }
 
@@ -115,7 +133,7 @@ public class TimeLimitMod implements PostInitializeSubscriber {
         @SpirePostfixPatch
         public static void Postfix(OverlayMenu __instance) {
             // Only decrement timer if we are viewing the room
-            if (__instance.endTurnButton.enabled && !AbstractDungeon.isScreenUp) {
+            if (config.getBool(ENABLED) && __instance.endTurnButton.enabled && !AbstractDungeon.isScreenUp) {
                 // Record time elapsed
                 long currentTime = System.nanoTime();
                 float secondsPassed = (float) (currentTime - lastRecordedTime) / TimeUnit.SECONDS.toNanos(1);
@@ -139,7 +157,7 @@ public class TimeLimitMod implements PostInitializeSubscriber {
     public static class TimerRenderPatch {
         @SpirePostfixPatch
         public static void Postfix(OverlayMenu __instance, SpriteBatch sb) {
-            if (__instance.endTurnButton.enabled) {
+            if (config.getBool(ENABLED) && __instance.endTurnButton.enabled) {
                 Color color = timeLeft < 5f ? Color.RED : Color.WHITE;
                 // Use ReflectionHacks to get x and y of the "End Turn" button, and apply deltas
                 float x = (float) ReflectionHacks.getPrivate(__instance.endTurnButton, EndTurnButton.class, "current_x");
